@@ -23,12 +23,31 @@ import pyarrow as pa
 
 from podrag.chunks import Chunk
 
-EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-EMBED_DIM = 384
+EMBED_MODEL = os.environ.get("PODRAG_EMBED_MODEL",
+                             "sentence-transformers/all-MiniLM-L6-v2")
 TABLE = "chunks"
 
-SCHEMA = pa.schema([
-    pa.field("vector", pa.list_(pa.float32(), EMBED_DIM)),
+# Dimension is DERIVED from the loaded model, never asserted. Hardcoding 384
+# meant swapping PODRAG_EMBED_MODEL would either corrupt the schema silently
+# or fail somewhere far from the cause.
+_ENCODER = None
+
+
+def _encoder():
+    global _ENCODER
+    if _ENCODER is None:
+        from sentence_transformers import SentenceTransformer
+        _ENCODER = SentenceTransformer(EMBED_MODEL)
+    return _ENCODER
+
+
+def embed_dim() -> int:
+    return int(_encoder().get_sentence_embedding_dimension())
+
+
+def schema() -> pa.Schema:
+    return pa.schema([
+    pa.field("vector", pa.list_(pa.float32(), embed_dim())),
     pa.field("text", pa.string()),
     # provenance — every field here exists so a hit can cite itself
     pa.field("show", pa.string()),
@@ -39,11 +58,6 @@ SCHEMA = pa.schema([
     pa.field("start_s", pa.float32()),
     pa.field("end_s", pa.float32()),
 ])
-
-
-def _encoder():
-    from sentence_transformers import SentenceTransformer
-    return SentenceTransformer(EMBED_MODEL)
 
 
 def connect(db_path: str = "./podrag.lance"):
@@ -57,8 +71,7 @@ def build_index(chunks: Iterable[Chunk], db_path: str = "./podrag.lance",
     if not chunks:
         raise ValueError("no chunks to index")
 
-    model = _encoder()
-    vectors = model.encode([c.text for c in chunks],
+    vectors = _encoder().encode([c.text for c in chunks],
                            show_progress_bar=False, normalize_embeddings=True)
 
     rows = [{
@@ -78,7 +91,7 @@ def build_index(chunks: Iterable[Chunk], db_path: str = "./podrag.lance",
         tbl = db.open_table(TABLE)
         tbl.add(rows)
     else:
-        tbl = db.create_table(TABLE, data=rows, schema=SCHEMA, mode="overwrite")
+        tbl = db.create_table(TABLE, data=rows, schema=schema(), mode="overwrite")
 
     # Full-text index enables keyword and hybrid search alongside vector.
     try:
