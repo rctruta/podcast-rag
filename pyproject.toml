@@ -1,0 +1,15 @@
+[project]
+name = "podrag"
+version = "0.1.0"
+description = "Corpus-agnostic podcast RAG with verifiable, playable citations"
+requires-python = ">=3.11"
+dependencies = [
+  "lancedb>=0.34",
+  "sentence-transformers>=3.0",
+  "pyarrow>=17",
+  "a third-party caption library>=1.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
