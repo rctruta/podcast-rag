@@ -64,3 +64,15 @@ def test_youtube_detection_uses_a_character_class_not_a_length_guess():
     assert _hit(guid="REDACTED").url().startswith("https://youtu.be/")
     # 11 chars, but not a YouTube id shape
     assert _hit(guid="episode/12.").url().endswith("#t=90")
+
+
+def test_missing_api_key_returns_hits_instead_of_raising(monkeypatch):
+    """Retrieval succeeded; only synthesis is unavailable. Losing the hits to
+    a KeyError throws away work already done (and paid for in compute)."""
+    import podrag.answer as A
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setattr(A, "search", lambda *a, **k: [_hit("passage text")])
+    monkeypatch.setattr(A, "score_confidence", lambda q, h: [0.9])
+    out = A.ask("q", db_path="/nonexistent")
+    assert out.error and "OPENAI_API_KEY" in out.error
+    assert out.hits and not out.refused

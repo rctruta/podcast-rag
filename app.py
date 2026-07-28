@@ -12,6 +12,14 @@ import os
 
 import streamlit as st
 
+# Streamlit does not inherit a sourced shell env, so .env must be loaded here.
+# Without this, synthesis died with KeyError: 'OPENAI_API_KEY'.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from podrag.answer import DEFAULT_MIN_CONFIDENCE, ask
 from podrag.index import open_index
 
@@ -58,8 +66,14 @@ with st.sidebar:
                       help="Below this the system refuses instead of answering. "
                            "Note: this threshold drifts with corpus size — see "
                            "scratch/findings.md F-1.")
-    synth = st.toggle("synthesize answer", value=True,
-                      help="Off = retrieval only, no LLM call, no spend.")
+    has_key = bool(os.environ.get("OPENAI_API_KEY"))
+    synth = st.toggle("synthesize answer", value=has_key, disabled=not has_key,
+                      help="Off = retrieval only, no LLM call, no spend."
+                           if has_key else
+                           "No OPENAI_API_KEY found. Retrieval still works; "
+                           "put a key in .env to enable synthesis.")
+    if not has_key:
+        st.caption("⚠ no `OPENAI_API_KEY` — retrieval only")
 
 q = st.text_input("Question", placeholder="what happens to hormones during menopause?")
 
@@ -68,7 +82,9 @@ if q:
         a = ask(q, k=k, search_type=search_type, db_path=DB,
                 min_confidence=floor, synthesize=synth)
 
-    if a.refused:
+    if a.error:
+        st.error(a.error)
+    elif a.refused:
         st.warning("**No confident answer.**")
         st.caption(a.reason)
         st.progress(min(a.confidence / max(floor, 1e-6), 1.0))

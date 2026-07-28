@@ -10,6 +10,7 @@ dependencies = [
   "sentence-transformers>=3.0",
   "pyarrow>=17",
   "a third-party caption library>=1.2",
+  "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]

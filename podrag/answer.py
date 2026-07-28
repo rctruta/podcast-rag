@@ -49,6 +49,7 @@ class Answer:
     confidence: float = 0.0
     refused: bool = False
     reason: str | None = None
+    error: str | None = None
 
     def render(self) -> str:
         if self.refused:
@@ -96,8 +97,15 @@ def ask(question: str, *, k: int = 5, search_type: str = "hybrid",
         f"[{h.episode_title} @ {h.timestamp}]\n{h.text}" for h in kept)
     user = f"Question: {question}\n\nExcerpts:\n\n{excerpts}"
 
+    key = os.environ.get("OPENAI_API_KEY")
+    if not key:
+        # Retrieval succeeded; only synthesis is unavailable. Return the hits
+        # rather than losing them to an exception.
+        return Answer(question, "", kept, best,
+                      error="OPENAI_API_KEY not set — showing retrieval only. "
+                            "Add it to .env to enable synthesis.")
     from openai import OpenAI
-    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    client = OpenAI(api_key=key)
     resp = client.chat.completions.create(
         model=model, temperature=0,
         messages=[{"role": "system", "content": SYSTEM},
