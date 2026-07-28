@@ -60,14 +60,17 @@ def test_embed_dim_is_derived_from_the_model_not_asserted():
     assert field.type.list_size == d
 
 
-def test_no_source_specific_url_special_cases_remain():
-    """A YouTube branch here guessed at video ids by string shape. With that
-    source withdrawn (docs/findings.md F-0), no guid shape gets special
-    treatment — RSS guids are opaque publisher strings."""
-    import inspect
+def test_no_guid_shape_gets_special_treatment():
+    """A YouTube branch here guessed at video ids by string shape (11 chars
+    from a character class). With that source withdrawn (F-0), RSS guids are
+    opaque publisher strings and every shape must be handled identically.
 
-    from podrag import search
-    assert "youtu" not in inspect.getsource(search).lower()
+    Asserts behaviour, not source text — an earlier version of this test
+    grepped for 'youtu' and tripped over the comment explaining the removal.
+    """
+    eleven_char = "AbCdEfGhIjK"          # would have matched the old branch
+    for guid in (eleven_char, "https://example.com/ep.mp3", "urn:uuid:abc", "ep-12"):
+        assert _hit(guid=guid, start=42.0).url() == f"{guid}#t=42"
 
 def test_provider_failure_returns_hits_instead_of_raising(monkeypatch):
     """Retrieval succeeded; only synthesis failed. Losing the hits to an
