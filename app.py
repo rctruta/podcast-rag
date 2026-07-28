@@ -1,14 +1,12 @@
-"""Streamlit chat UI.
+"""Streamlit chat UI — canonical pattern, no invention.
 
-Conversational rather than form-based for three reasons, each a defect in the
-previous version:
-  * st.chat_input submits on Enter natively; a form required clicking a button
-  * rendering the exchange history makes follow-ups discoverable — otherwise
-    the session memory exists but is invisible and untestable
-  * follow-up rewriting is only meaningful if you can see what it rewrote
+Layout is Streamlit's documented chat idiom: history renders oldest-first with
+st.chat_message, and st.chat_input is pinned to the bottom of the viewport.
+Earlier attempts here moved the input to the top and reversed the history;
+both were departures from the standard and both were worse.
 
-Everything shown is read from the retrieved rows or the show manifest. The UI
-computes nothing about relevance.
+Everything displayed comes from the retrieved rows or the show manifest. The
+UI computes nothing about relevance.
 """
 from __future__ import annotations
 
@@ -16,7 +14,6 @@ import os
 
 import streamlit as st
 
-# Streamlit does not inherit a sourced shell env.
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -46,23 +43,10 @@ def _corpus(db_path: str):
 
 
 def _source_line(hit, manifest) -> str:
-    """Whole string is the link — a small timestamp is a poor click target."""
     name = manifest.get(hit.show, {}).get("name", hit.show)
     return f"[**{name}** — {hit.episode_title} · ▶ {hit.timestamp}]({hit.url()})"
 
 
-def _answer(question: str, cfg: dict) -> None:
-    sess: Session = st.session_state.session
-    key = os.environ.get("OPENAI_API_KEY")
-    q, rewritten = standalone_question(sess, question, cfg["model"], key)
-    a = ask(q, k=cfg["k"], search_type=cfg["search_type"], db_path=DB,
-            min_confidence=cfg["floor"], synthesize=cfg["synth"], model=cfg["model"])
-    sess.add(question, a.text, refused=a.refused)
-    st.session_state.turns.append(
-        {"q": question, "rewritten": q if rewritten else None, "a": a})
-
-
-# ------------------------------------------------------------------ state
 st.session_state.setdefault("session", Session())
 st.session_state.setdefault("turns", [])
 st.session_state.setdefault("pending", None)
@@ -70,29 +54,27 @@ st.session_state.setdefault("pending", None)
 try:
     n_chunks, version = _corpus(DB)
 except Exception as e:
-    st.error(f"No index at `{DB}`.\n\n`python -m podrag.cli index <video_id> "
-             f"--show <name>`\n\n{e}")
+    st.error(f"No index at `{DB}`.\n\n"
+             f"`python -m podrag.cli index <video_id> --show <name>`\n\n{e}")
     st.stop()
 
 manifest = load_manifest()
 
-# ------------------------------------------------------------------ sidebar
+# ---------------------------------------------------------------- sidebar
 with st.sidebar:
     c1, c2 = st.columns(2)
     c1.metric("chunks", f"{n_chunks:,}")
     c2.metric("episodes", sum(len(s["episodes"]) for s in manifest.values()))
     st.caption(f"index v{version}")
 
-    search_type = st.radio("retrieval", ["hybrid", "vector", "keyword"], index=0,
+    search_type = st.radio("retrieval", ["hybrid", "vector", "keyword"],
                            horizontal=True)
     k = st.slider("passages", 3, 12, 6)
     floor = st.slider("confidence floor", 0.0, 0.6, DEFAULT_MIN_CONFIDENCE, 0.01,
                       help="Below this the system refuses. Drifts with corpus "
                            "size — see scratch/findings.md F-1.")
     has_key = bool(os.environ.get("OPENAI_API_KEY"))
-    synth = st.toggle("synthesize answer", value=has_key, disabled=not has_key,
-                      help="Off = retrieval only, no LLM call, no spend."
-                           if has_key else "No OPENAI_API_KEY — retrieval only.")
+    synth = st.toggle("synthesize answer", value=has_key, disabled=not has_key)
     if not has_key:
         st.caption("⚠ add `OPENAI_API_KEY` to .env for written answers")
     model = st.selectbox("model", ["gpt-4o-mini", "gpt-4o"], disabled=not has_key)
@@ -109,31 +91,33 @@ with st.sidebar:
         url = show.get("channel_url") or ""
         st.markdown(f"**[{show['name']}]({url})**" if url else f"**{show['name']}**")
         for guid, ep in sorted(show["episodes"].items(),
-                               key=lambda kv: kv[1].get("published", ""), reverse=True):
+                               key=lambda kv: kv[1].get("published", ""),
+                               reverse=True):
             mins = ep.get("duration_s", 0) // 60
-            st.markdown(f"<small>[{ep['title'][:52]}]({ep['url']}) "
-                        f"· {ep.get('published','')[:10]}"
-                        f"{' · ' + str(mins) + 'm' if mins else ''}</small>",
-                        unsafe_allow_html=True)
+            st.markdown(
+                f"<small>[{ep['title'][:50]}]({ep['url']}) · "
+                f"{ep.get('published','')[:10]}"
+                f"{' · ' + str(mins) + 'm' if mins else ''}</small>",
+                unsafe_allow_html=True)
 
 CFG = {"k": k, "search_type": search_type, "floor": floor,
        "synth": synth, "model": model}
 
-# ------------------------------------------------------------------ main
+# ---------------------------------------------------------------- main
 st.title("podrag")
-st.caption("Ask a podcast a question. Every claim links to the second it was said. "
-           "Follow-ups work — try “what about for men?” after an answer.")
+st.caption("Every claim links to the second it was said. Follow-ups work — "
+           "ask “what about for men?” after an answer.")
 
+# suggestions only before the conversation starts
 if not st.session_state.turns:
-    st.caption("Try one:")
     cols = st.columns(2)
-    for i, s in enumerate(SUGGESTED):
-        if cols[i % 2].button(s, key=f"sug{i}", use_container_width=True):
-            st.session_state.pending = s
+    for i, sug in enumerate(SUGGESTED):
+        if cols[i % 2].button(sug, key=f"sug{i}", use_container_width=True):
+            st.session_state.pending = sug
             st.rerun()
 
-# render the conversation
-for turn in st.session_state.turns:
+
+def _render(turn):
     with st.chat_message("user"):
         st.markdown(turn["q"])
         if turn["rewritten"]:
@@ -149,18 +133,33 @@ for turn in st.session_state.turns:
         if a.text:
             st.markdown(a.text)
         if a.hits:
-            st.markdown(f"<small>confidence {a.confidence:.3f}</small>",
-                        unsafe_allow_html=True)
+            st.caption(f"confidence {a.confidence:.3f}")
             for h in a.hits:
                 st.markdown(_source_line(h, manifest))
                 with st.expander("passage"):
                     st.caption(h.text)
 
-# chat_input submits on Enter
+
+# history: oldest first
+for turn in st.session_state.turns:
+    _render(turn)
+
+# input: pinned to the bottom of the viewport, submits on Enter
 typed = st.chat_input("Ask about the corpus…")
-pending = st.session_state.pending or typed
-if pending:
-    st.session_state.pending = None
-    with st.spinner("searching…"):
-        _answer(pending, CFG)
-    st.rerun()
+question = st.session_state.pending or typed
+st.session_state.pending = None
+
+if question:
+    sess: Session = st.session_state.session
+    key = os.environ.get("OPENAI_API_KEY")
+    with st.chat_message("user"):
+        st.markdown(question)
+    with st.chat_message("assistant"):
+        with st.spinner("searching…"):
+            q, rewritten = standalone_question(sess, question, model, key)
+            a = ask(q, k=k, search_type=search_type, db_path=DB,
+                    min_confidence=floor, synthesize=synth, model=model)
+        sess.add(question, a.text, refused=a.refused)
+        st.session_state.turns.append(
+            {"q": question, "rewritten": q if rewritten else None, "a": a})
+        st.rerun()
