@@ -66,13 +66,17 @@ def test_youtube_detection_uses_a_character_class_not_a_length_guess():
     assert _hit(guid="episode/12.").url().endswith("#t=90")
 
 
-def test_missing_api_key_returns_hits_instead_of_raising(monkeypatch):
-    """Retrieval succeeded; only synthesis is unavailable. Losing the hits to
-    a KeyError throws away work already done (and paid for in compute)."""
+def test_provider_failure_returns_hits_instead_of_raising(monkeypatch):
+    """Retrieval succeeded; only synthesis failed. Losing the hits to an
+    exception discards work already done. Provider-agnostic since the switch
+    to litellm — any provider error must degrade the same way."""
     import podrag.answer as A
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setattr(A, "search", lambda *a, **k: [_hit("passage text")])
     monkeypatch.setattr(A, "score_confidence", lambda q, h: [0.9])
+    import litellm
+    def boom(*a, **k):
+        raise RuntimeError("no credentials for provider")
+    monkeypatch.setattr(litellm, "completion", boom)
     out = A.ask("q", db_path="/nonexistent")
-    assert out.error and "OPENAI_API_KEY" in out.error
-    assert out.hits and not out.refused
+    assert out.error and "synthesis unavailable" in out.error
+    assert out.hits and not out.refused, "hits must survive a provider failure"

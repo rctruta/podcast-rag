@@ -15,7 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 ui = ["streamlit>=1.40"]
-synth = ["openai>=1.0"]
+synth = ["litellm>=1.50"]
 
 [build-system]
 requires = ["hatchling"]

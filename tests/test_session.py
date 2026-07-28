@@ -54,3 +54,21 @@ def test_genuine_followups_still_detected():
     for q in ["what about for men?", "and exercise?", "does it affect sleep?",
               "but why?", "what else?"]:
         assert s.looks_like_followup(q), q
+
+
+# --- provider discovery (no network beyond a 2s localhost probe) ----------
+
+def test_provider_discovery_reads_env_not_hardcoded(monkeypatch):
+    import podrag.providers as P
+    monkeypatch.setattr(P, "ollama_models", lambda *a, **k: [])
+    for env in P.PROVIDERS:
+        monkeypatch.delenv(env, raising=False)
+    assert P.available() == []
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "x")
+    got = P.available()
+    assert got and all("anthropic" in m for m, _ in got)
+
+
+def test_ollama_absence_is_not_an_error(monkeypatch):
+    import podrag.providers as P
+    assert P.ollama_models("http://localhost:1") == []

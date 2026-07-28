@@ -73,11 +73,21 @@ with st.sidebar:
     floor = st.slider("confidence floor", 0.0, 0.6, DEFAULT_MIN_CONFIDENCE, 0.01,
                       help="Below this the system refuses. Drifts with corpus "
                            "size — see scratch/findings.md F-1.")
-    has_key = bool(os.environ.get("OPENAI_API_KEY"))
+    from podrag.providers import available
+    models = available()
+    has_key = bool(models)
     synth = st.toggle("synthesize answer", value=has_key, disabled=not has_key)
-    if not has_key:
-        st.caption("⚠ add `OPENAI_API_KEY` to .env for written answers")
-    model = st.selectbox("model", ["gpt-4o-mini", "gpt-4o"], disabled=not has_key)
+    if has_key:
+        labels = {m: f"{m}  ·  {p}" for m, p in models}
+        model = st.selectbox("model", [m for m, _ in models],
+                             format_func=lambda m: labels[m])
+    else:
+        model = "gpt-4o-mini"
+        st.caption("**Retrieval-only** — search, citations and refusal all work. "
+                   "For written answers, set any one of `OPENAI_API_KEY`, "
+                   "`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`, "
+                   "`OPENROUTER_API_KEY` in `.env` — or run "
+                   "[Ollama](https://ollama.com) locally for free.")
 
     total_calls = sum(t.get("calls", 0) for t in st.session_state.turns)
     if st.session_state.turns:

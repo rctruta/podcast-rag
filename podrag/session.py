@@ -83,9 +83,9 @@ def standalone_question(session: Session, question: str, model: str,
     if not api_key or not session.looks_like_followup(question):
         return question, False
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key)
-        r = client.chat.completions.create(
+        import litellm
+        litellm.suppress_debug_info = True
+        r = litellm.completion(
             model=model, temperature=0, max_tokens=100,
             messages=[
                 {"role": "system", "content":

@@ -97,18 +97,22 @@ def ask(question: str, *, k: int = 5, search_type: str = "hybrid",
         f"[{h.episode_title} @ {h.timestamp}]\n{h.text}" for h in kept)
     user = f"Question: {question}\n\nExcerpts:\n\n{excerpts}"
 
-    key = os.environ.get("OPENAI_API_KEY")
-    if not key:
-        # Retrieval succeeded; only synthesis is unavailable. Return the hits
-        # rather than losing them to an exception.
+    # Provider-agnostic via litellm: OpenAI, Anthropic, Gemini, Groq,
+    # OpenRouter, or a LOCAL Ollama model. Local means a public deployment
+    # costs the operator nothing, which is what makes this shareable.
+    import litellm
+    litellm.suppress_debug_info = True
+    try:
+        resp = litellm.completion(
+            model=model, temperature=0,
+            messages=[{"role": "system", "content": SYSTEM},
+                      {"role": "user", "content": user}])
+    except Exception as e:
+        # Retrieval already succeeded; losing the hits to a provider error
+        # throws away work that was already done.
         return Answer(question, "", kept, best,
-                      error="OPENAI_API_KEY not set — showing retrieval only. "
-                            "Add it to .env to enable synthesis.")
-    from openai import OpenAI
-    client = OpenAI(api_key=key)
-    resp = client.chat.completions.create(
-        model=model, temperature=0,
-        messages=[{"role": "system", "content": SYSTEM},
-                  {"role": "user", "content": user}])
+                      error=f"synthesis unavailable ({type(e).__name__}). "
+                            f"Retrieval results shown below. Check the model "
+                            f"name and that its key is set: {str(e)[:160]}")
     return Answer(question, (resp.choices[0].message.content or "").strip(),
                   kept, best)

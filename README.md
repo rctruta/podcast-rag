@@ -145,12 +145,31 @@ lost, refusals carry no sources, citations resolve to real offsets, bronze
 saves are idempotent, and the embedding dimension is derived rather than
 asserted.
 
+## Bring your own model — or none
+
+**Retrieval is entirely local and free.** Embeddings run on your machine,
+LanceDB is embedded. Search, citations and refusal all work with no key and no
+account.
+
+Written answers are optional and provider-agnostic (via `litellm`). Set any
+one of these and the app finds it:
+
+| provider | env var |
+|---|---|
+| OpenAI | `OPENAI_API_KEY` |
+| Anthropic | `ANTHROPIC_API_KEY` |
+| Google | `GEMINI_API_KEY` |
+| Groq | `GROQ_API_KEY` |
+| OpenRouter | `OPENROUTER_API_KEY` |
+| **Ollama (local)** | none — just run it |
+
+Ollama costs nothing and needs no account, which is what makes this shareable:
+**nobody has to spend money to run it, and no operator ends up paying for
+other people's queries.**
+
 ## When it costs money
 
-Retrieval is entirely local — embeddings run on your machine, LanceDB is
-embedded. **Searching costs nothing.**
-
-OpenAI is called in exactly two places, both visible in the UI:
+The model is called in exactly two places, both visible in the UI:
 
 | call | when | cost |
 |---|---|---|
@@ -161,9 +180,9 @@ So a question costs **0, 1, or 2 calls**. Each answer shows which, and the
 sidebar keeps a running total for the session. Turn synthesis off and the app
 is free to run — retrieval, citations and refusal all still work.
 
-**If you deploy this publicly, your key pays for every visitor.** Either ship
-with synthesis off and let users supply their own key, or don't deploy it
-publicly. The default in this repo is off unless a key is present.
+**If you host this with your own key, you pay for every visitor.** The repo
+defaults to retrieval-only unless a key is present, and the provider list above
+means a visitor can supply their own — or use Ollama and pay nothing.
 
 ## Not done
 
