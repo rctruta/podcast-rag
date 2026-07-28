@@ -184,6 +184,21 @@ is free to run — retrieval, citations and refusal all still work.
 defaults to retrieval-only unless a key is present, and the provider list above
 means a visitor can supply their own — or use Ollama and pay nothing.
 
+## Findings
+
+Observations with architectural consequences, each marked MEASURED or ASSUMED:
+**[docs/findings.md](docs/findings.md)**
+
+- **F-1** — a fixed similarity threshold does not survive corpus growth. The
+  same off-topic query scored 0.105 against 5 episodes and 0.188 against 7.
+  Four remedies, with tradeoffs and a defended position.
+- **F-2** — different shows draw different material out of the same expert.
+  Measured across two a repeat guest interviews; the asymmetry is by topic, not
+  runtime.
+- **F-3** — persisting raw capture is what makes chunk size and embedding model
+  actually tunable.
+- **F-4** — incremental indexing, measured.
+
 ## Not done
 
 - Answer cache keyed on query + index version
