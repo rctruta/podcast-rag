@@ -82,8 +82,10 @@ if q:
         a = ask(q, k=k, search_type=search_type, db_path=DB,
                 min_confidence=floor, synthesize=synth)
 
-    if a.error:
+    if getattr(a, "error", None):
         st.error(a.error)
+        for h in a.hits:
+            st.markdown(f"[{h.episode_title[:70]} · **{h.timestamp}**]({h.url()})")
     elif a.refused:
         st.warning("**No confident answer.**")
         st.caption(a.reason)
