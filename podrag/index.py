@@ -42,7 +42,7 @@ def _encoder():
 
 
 def embed_dim() -> int:
-    return int(_encoder().get_sentence_embedding_dimension())
+    return int(_encoder().get_embedding_dimension())
 
 
 def schema() -> pa.Schema:
