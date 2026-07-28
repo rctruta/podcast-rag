@@ -4,20 +4,20 @@ Ask a question about a podcast. Get an answer, and get sent to the exact
 second someone said it.
 
 ```
-Q: what happens to hormones during menopause and what can help?
+Q: what should women know about menopause and hormone therapy?
 
-During menopause, estrogen levels decrease significantly, leading to bone
-loss, increased cardiovascular risk, and changes in body composition...
+Hormone replacement therapy is an evolving conversation, particularly
+regarding its use during perimenopause, not just menopause...
 
 Sources:
-  · The #1 Menopause Doctor · 43:40    https://youtu.be/REDACTED?t=2620
-  · The Women's Hormone Health Episode · 1:01:31  https://youtu.be/REDACTED?t=3691
-  · The Most Important Conversation About Women's Health · 9:04  https://youtu.be/REDACTED?t=544
+  · The Diary Of A CEO — Dr Rachel Rubin · 24:45
+  · The Diary Of A CEO — Dr Rachel Rubin · 27:09
 ```
 
-Three episodes, one answer, every claim clickable.
+Every claim clickable, straight to the second it was said.
 
-*Corpus: 7 episodes across 3 shows, 964 chunks. Every number below is measured on it.*
+*Corpus: 99 episodes across 9 shows, 7,377 chunks — every transcript published
+by the show itself. Every number below is measured on it.*
 
 ---
 
@@ -34,6 +34,29 @@ Provenance was the point from the start: an answer that cannot show you where it
 The value is across shows: the same question answered by several experts, across various different podcasts. Similarly, one expert appearing in multiple podcasts may provide additional content/answer to a similar question. Podcasts vary in length, and an expert may be constrained on time in one, but not other.
 ---
 
+## The corpus
+
+Two halves, deliberately. **Nothing here is scraped** — every show below
+publishes its own transcripts via the Podcasting 2.0 `<podcast:transcript>`
+RSS tag, which exists so clients can read them.
+
+**Health & long-form interviews**
+- *The Diary Of A CEO* — 25 episodes. Deep interviews with clinicians and
+  researchers; substantial coverage of women's health, hormones, menopause,
+  and longevity.
+
+**Engineering & AI**
+- *Data Engineering Podcast* · *Talk Python To Me* · *Practical AI* ·
+  *Oxide and Friends* · *Python Bytes* · *Screaming in the Cloud* ·
+  *Darknet Diaries* · *The Joe Reis Show*
+
+So the same system answers *"what should women know about hormone therapy?"*
+and *"how do you keep a data pipeline maintainable as it grows?"* — from
+different shows, with citations either way.
+
+Full survey of which shows publish transcripts, and which don't:
+**[docs/sources.md](docs/sources.md)**
+
 ## What it does
 
 - **Cites everything.** Every answer carries episode, timestamp, and a playable
@@ -41,8 +64,7 @@ The value is across shows: the same question answered by several experts, across
   cannot be invented.
 - **Refuses when it should.** Below a confidence floor it says so instead of
   synthesising from irrelevant context. Asked about Honda transmissions against
-  a health corpus, it returns *"no confident answer, best similarity 0.188"*
-  against a 0.25 floor — and makes no LLM call.
+  this corpus, it returns *"no confident answer"* and makes no LLM call.
 - **Works across shows.** The corpus is a parameter. One question, answers drawn
   from whichever episodes actually cover it.
 - **Runs from a directory.** Embedded vector store, no server, no account.
@@ -100,9 +122,8 @@ rebuilds from disk — measured on the 7-episode corpus: 964 chunks rebuilt in
 
 | layer | choice | why |
 |---|---|---|
-| transcripts | YouTube captions | free, timestamped, no key |
-| metadata | YouTube Data API v3 | description + tags + dates; oembed fallback when no key |
-| raw store | Parquet + zstd | columnar, 9.2× compression (22,067 segments → 567 KB), readable by DuckDB/Polars/pandas |
+| transcripts | publisher RSS `<podcast:transcript>` | the sanctioned source — VTT / SubRip / JSON, all timed |
+| raw store | Parquet + zstd | columnar, 6.4× compression (59,832 segments → 2.8 MB), readable by DuckDB/Polars/pandas |
 | index | LanceDB | vector + full-text + hybrid in one embedded store; versioned tables |
 | embeddings | `all-MiniLM-L6-v2` | local, free, swappable via `PODRAG_EMBED_MODEL` |
 
@@ -190,8 +211,9 @@ Observations with architectural consequences, each marked MEASURED or ASSUMED:
 **[docs/findings.md](docs/findings.md)** · legitimate sources: **[docs/sources.md](docs/sources.md)**
 
 - **F-1** — a fixed similarity threshold does not survive corpus growth. The
-  same off-topic query scored 0.105 against 5 episodes and 0.188 against 7.
-  Four remedies, with tradeoffs and a defended position.
+  same off-topic query scored 0.105 at 514 chunks, 0.188 at 964, and **0.227
+  at 7,377** — against a 0.25 floor. Predicted at the second measurement,
+  confirmed at the third. Four remedies, with tradeoffs and a position.
 - **F-2** — different shows draw different material out of the same expert.
   Measured across two a repeat guest interviews; the asymmetry is by topic, not
   runtime.
@@ -206,10 +228,11 @@ Observations with architectural consequences, each marked MEASURED or ASSUMED:
 - Episode-level topic filtering (metadata is captured; the filter isn't wired)
 - **Retrieval evaluation.** Hit-rate/MRR need a hand-built golden set. Not
   claimed until that exists.
-- The 0.25 confidence floor is set by inspection, not calibrated. Note it
-  drifts with corpus size: the same off-topic query scored 0.105 against 5
-  episodes and 0.188 against 7. A larger corpus makes off-topic questions find
-  *something* closer, so a fixed floor will need revisiting as the corpus grows.
+- **The 0.25 confidence floor is now the most likely next defect.** It is set
+  by inspection, not calibrated, and it drifts with corpus size: 0.105 → 0.188
+  → 0.227 on an identical off-topic query as the corpus grew to 7,377 chunks.
+  The margin is down to 0.023. See F-1 for the four remedies; the relative-signal
+  approach is the one to implement.
 
 **Known issue:** LanceDB's vector, full-text and hybrid searches return scores
 on different scales (~0.5 / ~4.6 / ~0.016). Blending works; cross-mode score

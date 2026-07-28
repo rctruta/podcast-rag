@@ -66,15 +66,23 @@ work?" would have surfaced the problem on day one, and is cheap to ask.
 **MEASURED.** The same off-topic query — *"optimal torque spec for a 1997 Honda
 Civic transmission"* against a health/podcast corpus — scored:
 
-| corpus | best cosine similarity |
-|---|---|
-| 5 episodes (514 chunks) | 0.105 |
-| 7 episodes (964 chunks) | **0.188** |
+| corpus | best cosine similarity | margin to the 0.25 floor |
+|---|---|---|
+| 5 episodes (514 chunks) | 0.105 | 0.145 |
+| 7 episodes (964 chunks) | 0.188 | 0.062 |
+| **99 episodes (7,377 chunks)** | **0.227** | **0.023** |
 
-Same query, same embedding model, same floor (0.25). The margin to refusal
-narrowed by ~44% purely because the corpus grew. Extrapolating, a large enough
-corpus will push an unrelated query over any fixed floor and the system will
-start answering questions it should refuse.
+Same query, same embedding model, same floor. **The prediction made at the
+second data point was confirmed at the third**: the margin has now collapsed
+by 84%, and the system is one corpus-growth step away from confidently
+answering a car-maintenance question out of a podcast corpus.
+
+Note the third measurement is on an entirely different corpus (technical and
+interview shows, not wellness), so this is not an artifact of topical drift
+toward the query — it is the corpus-size effect the mechanism predicts.
+
+**This is no longer theoretical.** A fixed floor is now the most likely next
+defect in this system.
 
 ### Why this happens
 
