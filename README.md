@@ -145,6 +145,26 @@ lost, refusals carry no sources, citations resolve to real offsets, bronze
 saves are idempotent, and the embedding dimension is derived rather than
 asserted.
 
+## When it costs money
+
+Retrieval is entirely local — embeddings run on your machine, LanceDB is
+embedded. **Searching costs nothing.**
+
+OpenAI is called in exactly two places, both visible in the UI:
+
+| call | when | cost |
+|---|---|---|
+| follow-up rewrite | only when a question is detected as a follow-up | ~100 tokens |
+| answer synthesis | only when "synthesize answer" is on and confidence clears the floor | 1 call over the retrieved passages |
+
+So a question costs **0, 1, or 2 calls**. Each answer shows which, and the
+sidebar keeps a running total for the session. Turn synthesis off and the app
+is free to run — retrieval, citations and refusal all still work.
+
+**If you deploy this publicly, your key pays for every visitor.** Either ship
+with synthesis off and let users supply their own key, or don't deploy it
+publicly. The default in this repo is off unless a key is present.
+
 ## Not done
 
 - Answer cache keyed on query + index version

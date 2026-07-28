@@ -36,3 +36,21 @@ def test_context_renders_prior_exchanges():
 def test_refusals_are_recorded_as_such():
     s = Session(); s.add("q", "", refused=True)
     assert "(refused)" in s.as_context()
+
+
+def test_standalone_questions_are_not_swept_up_as_followups():
+    """The earlier heuristic substring-matched 'why', 'that', 'more', 'it '
+    anywhere, which glued fresh questions to prior context."""
+    s = Session(); s.add("what happens during menopause", "…")
+    for q in ["why do mitochondria matter",
+              "what causes gray hair",
+              "how much exercise is enough",
+              "what should women know about hormone therapy"]:
+        assert not s.looks_like_followup(q), q
+
+
+def test_genuine_followups_still_detected():
+    s = Session(); s.add("what happens during menopause", "…")
+    for q in ["what about for men?", "and exercise?", "does it affect sleep?",
+              "but why?", "what else?"]:
+        assert s.looks_like_followup(q), q

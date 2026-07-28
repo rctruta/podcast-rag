@@ -79,6 +79,9 @@ with st.sidebar:
         st.caption("⚠ add `OPENAI_API_KEY` to .env for written answers")
     model = st.selectbox("model", ["gpt-4o-mini", "gpt-4o"], disabled=not has_key)
 
+    total_calls = sum(t.get("calls", 0) for t in st.session_state.turns)
+    if st.session_state.turns:
+        st.caption(f"OpenAI calls this session: **{total_calls}**")
     if st.session_state.turns and st.button("clear conversation",
                                             use_container_width=True):
         st.session_state.session.clear()
@@ -108,6 +111,17 @@ st.title("podrag")
 st.caption("Every claim links to the second it was said. Follow-ups work — "
            "ask “what about for men?” after an answer.")
 
+# Starting a new line of questioning must be one obvious click, not a hunt
+# through the sidebar. Without it, every question inherits prior context.
+if st.session_state.turns:
+    left, right = st.columns([3, 1])
+    left.caption(f"{len(st.session_state.turns)} question(s) in this thread — "
+                 f"follow-ups use the earlier context")
+    if right.button("New topic", use_container_width=True, type="secondary"):
+        st.session_state.session.clear()
+        st.session_state.turns = []
+        st.rerun()
+
 # suggestions only before the conversation starts
 if not st.session_state.turns:
     cols = st.columns(2)
@@ -133,7 +147,10 @@ def _render(turn):
         if a.text:
             st.markdown(a.text)
         if a.hits:
-            st.caption(f"confidence {a.confidence:.3f}")
+            calls = turn.get("calls", 0)
+            cost = "no API calls — retrieval is local" if calls == 0 else \
+                   f"{calls} OpenAI call{'s' if calls > 1 else ''}"
+            st.caption(f"confidence {a.confidence:.3f} · {cost}")
             for h in a.hits:
                 st.markdown(_source_line(h, manifest))
                 with st.expander("passage"):
@@ -150,16 +167,18 @@ question = st.session_state.pending or typed
 st.session_state.pending = None
 
 if question:
+    # Compute only — do NOT render here. History below is the single render
+    # path. Rendering inline AND re-rendering after st.rerun() produced two
+    # assistant blocks, the first partial (text + confidence, no citations),
+    # which read as "the first answer has no provenance".
     sess: Session = st.session_state.session
     key = os.environ.get("OPENAI_API_KEY")
-    with st.chat_message("user"):
-        st.markdown(question)
-    with st.chat_message("assistant"):
-        with st.spinner("searching…"):
-            q, rewritten = standalone_question(sess, question, model, key)
-            a = ask(q, k=k, search_type=search_type, db_path=DB,
-                    min_confidence=floor, synthesize=synth, model=model)
-        sess.add(question, a.text, refused=a.refused)
-        st.session_state.turns.append(
-            {"q": question, "rewritten": q if rewritten else None, "a": a})
-        st.rerun()
+    with st.spinner("searching…"):
+        q, rewritten = standalone_question(sess, question, model, key)
+        a = ask(q, k=k, search_type=search_type, db_path=DB,
+                min_confidence=floor, synthesize=synth, model=model)
+    sess.add(question, a.text, refused=a.refused)
+    st.session_state.turns.append(
+        {"q": question, "rewritten": q if rewritten else None, "a": a,
+         "calls": (1 if rewritten else 0) + (1 if (synth and a.text and not a.refused) else 0)})
+    st.rerun()

@@ -45,20 +45,34 @@ class Session:
             for e in self.exchanges)
 
     def looks_like_followup(self, question: str) -> bool:
-        """Cheap heuristic — no LLM call unless it's plausibly a follow-up.
+        """Conservative: only LEADING cues count, and only for short questions.
 
-        Short questions with pronouns or comparatives and no new subject are
-        the common case ("what about for men?", "and the side effects?").
+        An earlier version substring-matched cues like "why", "that", "more",
+        "it " anywhere in the question, which swept up plenty of standalone
+        questions ("why do mitochondria matter") and silently glued them to
+        prior context. False positives are worse than false negatives here: a
+        missed follow-up still searches literally and returns something, while
+        a false positive rewrites a fresh question into the previous topic and
+        the user cannot tell why the answer drifted.
         """
         if not self.exchanges:
             return False
-        q = question.lower().strip()
-        if len(q.split()) > 12:
+        q = question.lower().strip().rstrip("?")
+        if len(q.split()) > 8:          # a long question carries its own subject
             return False
-        cues = ("what about", "and ", "how about", "why", "them", "it ", "that",
-                "those", "he ", "she ", "they", "instead", "also", "more")
-        return q.startswith(("and", "what about", "how about", "why", "ok")) or \
-            any(c in q for c in cues)
+        leading = ("and ", "what about", "how about", "but ", "also ",
+                   "plus ", "ok ", "okay ", "so ")
+        if q.startswith(leading):
+            return True
+        # bare pronoun subjects with no noun of their own
+        bare = ("what about it", "does it", "is it", "are they", "do they",
+                "does he", "does she", "and them", "what else",
+                "why is that", "why is it", "why does that", "why not",
+                "why though", "how so")
+        if any(q.startswith(b) for b in bare):
+            return True
+        # "why?" / "why is that" style: leading why with no subject of its own
+        return q.startswith("why") and len(q.split()) <= 3
 
 
 def standalone_question(session: Session, question: str, model: str,
