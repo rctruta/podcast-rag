@@ -8,16 +8,12 @@ is not decoration added at answer time — it travels in the row.
 """
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Literal
 
 from podrag.index import _encoder, open_index
 
 SearchType = Literal["vector", "keyword", "hybrid"]
-
-# YouTube video ids: exactly 11 chars from [A-Za-z0-9_-].
-_YOUTUBE_ID = re.compile(r"[A-Za-z0-9_-]{11}")
 
 
 @dataclass(frozen=True)
@@ -43,12 +39,12 @@ class Hit:
     def url(self) -> str:
         """Playable deep link.
 
-        Was `len(guid) == 11` — a guess that any 11-character id is a YouTube
-        video. Now an explicit character-class check, so an 11-char guid from
-        some other source is not silently turned into a YouTube link.
+        A YouTube special-case lived here while captions came from YouTube.
+        That source was withdrawn (see docs/findings.md F-0), and RSS guids are
+        opaque publisher strings, not video ids — so the guid is used directly
+        with a time fragment. The UI resolves a proper episode link from the
+        show manifest, which is where per-episode presentation data belongs.
         """
-        if _YOUTUBE_ID.fullmatch(self.episode_guid):
-            return f"https://youtu.be/{self.episode_guid}?t={int(self.start_s)}"
         return f"{self.episode_guid}#t={int(self.start_s)}"
 
 

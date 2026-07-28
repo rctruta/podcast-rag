@@ -3,7 +3,7 @@ from podrag.answer import Answer, DEFAULT_MIN_CONFIDENCE
 from podrag.search import Hit
 
 
-def _hit(t="text", start=90.0, guid="REDACTED"):
+def _hit(t="text", start=90.0, guid="https://example.com/ep/1"):
     return Hit(text=t, show="s", episode_guid=guid, episode_title="Ep",
                published="2026", start_s=start, end_s=start + 10, score=0.5)
 
@@ -20,17 +20,18 @@ def test_answered_render_lists_every_source():
     out = a.render()
     assert "some answer" in out
     assert "1:30" in out and "1:02:05" in out
-    assert out.count("youtu.be") == 2
+    assert out.count("#t=") == 2, "each source renders a time-anchored link"
 
 
-def test_citations_are_playable_deep_links_at_the_right_offset():
+def test_citations_anchor_at_the_right_offset():
     h = _hit(start=1591.0)
-    assert h.url() == "https://youtu.be/REDACTED?t=1591"
+    assert h.url() == "https://example.com/ep/1#t=1591"
 
 
-def test_non_youtube_guid_falls_back_to_time_fragment():
-    h = _hit(guid="https://example.com/ep.mp3", start=60.0)
-    assert h.url().endswith("#t=60")
+def test_any_guid_shape_produces_a_time_anchor():
+    """RSS guids are opaque publisher strings; none are special-cased."""
+    for g in ("https://example.com/ep.mp3", "urn:uuid:abc", "episode-12"):
+        assert _hit(guid=g, start=60.0).url() == f"{g}#t=60"
 
 
 def test_confidence_floor_is_explicit_not_hidden():
@@ -59,12 +60,14 @@ def test_embed_dim_is_derived_from_the_model_not_asserted():
     assert field.type.list_size == d
 
 
-def test_youtube_detection_uses_a_character_class_not_a_length_guess():
-    """Was `len(guid) == 11`, which turned any 11-char id into a YouTube link."""
-    assert _hit(guid="REDACTED").url().startswith("https://youtu.be/")
-    # 11 chars, but not a YouTube id shape
-    assert _hit(guid="episode/12.").url().endswith("#t=90")
+def test_no_source_specific_url_special_cases_remain():
+    """A YouTube branch here guessed at video ids by string shape. With that
+    source withdrawn (docs/findings.md F-0), no guid shape gets special
+    treatment — RSS guids are opaque publisher strings."""
+    import inspect
 
+    from podrag import search
+    assert "youtu" not in inspect.getsource(search).lower()
 
 def test_provider_failure_returns_hits_instead_of_raising(monkeypatch):
     """Retrieval succeeded; only synthesis failed. Losing the hits to an

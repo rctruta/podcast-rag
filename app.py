@@ -43,8 +43,13 @@ def _corpus(db_path: str):
 
 
 def _source_line(hit, manifest) -> str:
-    name = manifest.get(hit.show, {}).get("name", hit.show)
-    return f"[**{name}** — {hit.episode_title} · ▶ {hit.timestamp}]({hit.url()})"
+    """Whole string is the link. The episode URL comes from the manifest — the
+    chunk carries only what retrieval and citation need."""
+    show = manifest.get(hit.show, {})
+    name = show.get("name", hit.show)
+    ep = show.get("episodes", {}).get(hit.episode_guid, {})
+    url = ep.get("url") or hit.url()
+    return f"[**{name}** — {hit.episode_title} · ▶ {hit.timestamp}]({url})"
 
 
 st.session_state.setdefault("session", Session())
