@@ -3,6 +3,8 @@ name = "podrag"
 version = "0.1.0"
 description = "Corpus-agnostic podcast RAG with verifiable, playable citations"
 requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [{name = "Ramona C. Truta"}]
 dependencies = [
   "lancedb>=0.34",
   "sentence-transformers>=3.0",
