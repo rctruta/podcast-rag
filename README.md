@@ -122,6 +122,17 @@ python -m podrag.cli ask "what are the signs of manipulation?"
 
 `--no-synth` returns retrieval only, with no LLM call and no spend.
 
+### UI
+
+```bash
+streamlit run app.py
+```
+
+Sidebar shows the corpus grouped by show, and exposes retrieval mode, passage
+count, and the confidence floor — so the refusal threshold is something you can
+move and observe rather than a hidden constant. Citations render as links that
+open the episode at the cited second.
+
 ## Tests
 
 ```bash
