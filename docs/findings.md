@@ -6,6 +6,61 @@ design. Each entry states whether it was MEASURED or ASSUMED.
 
 ---
 
+## F-0. The ingestion source was not legally defensible (and the pipeline survived)
+
+**VERIFIED 2026-07-28**, after the source was questioned rather than assumed.
+
+The first version fetched YouTube auto-captions via `a third-party caption library`.
+Three checks, each against a primary source:
+
+1. **No Creative Commons exemption.** All 8 indexed videos reported
+   `status.license: "youtube"` via the Data API — Standard YouTube License.
+2. **No sanctioned path exists.** The official `captions.download` endpoint
+   *"requires the user to have permission to edit the video."* A third party
+   cannot legally fetch someone else's captions through the API. It follows
+   that `a third-party caption library` must use the undocumented `timedtext`
+   endpoint — i.e. it works by routing around an access control.
+3. **Local use does not cure it.** YouTube's ToS prohibits *"automated means
+   (such as robots, botnets or scrapers)"* and *"circumvent, disable... or
+   otherwise interfere with any part of the Service"*. The prohibition is on
+   **access**, not distribution, so keeping the corpus local is still a breach.
+
+An earlier note in this repo claimed fetching "at index time on the user's
+machine" was the safer design. That was reasoning by analogy, and it was wrong.
+
+### The replacement
+
+Podcasting 2.0's `<podcast:transcript>` RSS tag — a transcript the publisher
+chose to distribute, in a field that exists to be read. Surveyed 20 shows:
+**8 publish transcripts**, including Data Engineering Podcast, Practical AI,
+Talk Python To Me, Oxide and Friends, Darknet Diaries and The Diary Of A CEO.
+Formats include WebVTT, SubRip and JSON, all carrying cue timings.
+
+New corpus: **1,725 chunks across 4 technical shows**, every segment timed,
+nothing scraped.
+
+### The architectural point
+
+**Swapping the source required no change downstream.** `Segment` was already
+the interface; chunking, storage, indexing, retrieval, citation and refusal
+were untouched. The YouTube module was deleted and the tests that mattered
+still passed.
+
+That is worth more than the original feature: a pipeline whose legal footing
+can change without a rewrite. It also means the honest degradation is
+explicit — HTML and plain-text transcripts carry no timings, so those
+citations point at an episode rather than a moment, and `timed=False` is
+recorded rather than implied.
+
+### The transferable rule
+
+**Check what a dependency actually does before building on it.** The library
+worked, was popular, and was used in a paid course — none of which is evidence
+that it is permitted. The question "what would this have to bypass in order to
+work?" would have surfaced the problem on day one, and is cheap to ask.
+
+---
+
 ## F-1. A fixed similarity threshold does not survive corpus growth
 
 **MEASURED.** The same off-topic query — *"optimal torque spec for a 1997 Honda
