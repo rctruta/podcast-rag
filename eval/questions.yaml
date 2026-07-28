@@ -1,0 +1,188 @@
+# Labelled calibration set for the refusal gate (F-1).
+#
+# A threshold without a labelled set is an opinion. This is the set that turns
+# the floor into a measurement.
+#
+# label:
+#   answerable   - the corpus demonstrably covers this; the gate SHOULD open.
+#   near_miss    - same domain, plausible phrasing, NOT covered by these 99
+#                  episodes; the gate SHOULD refuse. This is the bucket that
+#                  matters. Far-off-topic questions are easy for any threshold;
+#                  the near misses are where a badly-set floor fabricates.
+#   off_topic    - unrelated to the corpus entirely; the gate SHOULD refuse.
+#                  Kept as a floor-sanity check, not as evidence of quality.
+#
+# Questions are written from episode titles and show subject matter (see
+# `transcripts/shows.json` and the title survey), NOT generated from chunk text.
+# Deriving a question from the passage that answers it inflates similarity and
+# would make the gate look better calibrated than it is.
+#
+# Corpus at time of writing: 99 episodes / 7,377 chunks / 9 shows.
+
+questions:
+
+  # --- answerable ------------------------------------------------------------
+  - q: "What are the security risks specific to AI agents, and what does zero trust mean for them?"
+    label: answerable
+    why: "practicalai 'Zero Trust for AI Agents', 'AIUC-1: Building trust in AI agents'"
+
+  - q: "How do teams decide between building a tool in-house versus buying it?"
+    label: answerable
+    why: "screaminginthecloud 'Build vs Buy: The Hidden Costs of Just Building It'"
+
+  - q: "What is FinOps and how do companies control runaway cloud spend?"
+    label: answerable
+    why: "screaminginthecloud 'FinOps, AI, and the Cost of Cloud Chaos'"
+
+  - q: "What makes writing unsafe Rust difficult?"
+    label: answerable
+    why: "oxideandfriends 'The Hardest Kind of Unsafe Rust'"
+
+  - q: "How is Ray used for parallel and distributed Python workloads?"
+    label: answerable
+    why: "talkpythontome '#547 Parallel Python at Anyscale with Ray'; dataengineeringpodcast GPU/Ray episode"
+
+  - q: "What is in the OWASP Top 10 and how does it apply to Python developers?"
+    label: answerable
+    why: "talkpythontome '#545 OWASP Top 10 (2025 List) for Python Devs'"
+
+  - q: "How do you maximize GPU utilization in a machine learning pipeline?"
+    label: answerable
+    why: "dataengineeringpodcast 'Maximizing GPU Utilization: Heterogeneous Pipelines with Ray and Kubernetes'"
+
+  - q: "How should AI systems handle memory, and what does designing memory at scale involve?"
+    label: answerable
+    why: "dataengineeringpodcast 'From Data Models to Mind Models: Designing AI Memory at Scale'"
+
+  - q: "What is MCP and how does it fit into enterprise AI infrastructure?"
+    label: answerable
+    why: "practicalai 'Rebooting Enterprise AI with MCP and Kubernetes'"
+
+  - q: "What are the arguments for open models versus closed models?"
+    label: answerable
+    why: "practicalai 'The Myth of Model Wars: Open vs Closed AI in 2026'"
+
+  - q: "How are coding agents changing the work of software developers?"
+    label: answerable
+    why: "screaminginthecloud 'Coding Agents, Chaos, and the Future of Dev Work', 'When AI Starts Writing the Pull Requests'"
+
+  - q: "How do graph databases get used for analytics without a separate ETL step?"
+    label: answerable
+    why: "dataengineeringpodcast 'Scaling Graph Analytics Without ETL: PuppyGraph'; screaminginthecloud 'Everything Is a Graph'"
+
+  - q: "What does self-hosting your own applications involve, and why do people do it?"
+    label: answerable
+    why: "talkpythontome '#546 Self hosting apps for Python people'"
+
+  - q: "How do cybercriminals run fraud operations, and how are they caught?"
+    label: answerable
+    why: "darknetdiaries 'Melody Fraud', 'Tarjeteros', 'SuperBox'"
+
+  - q: "What is the state of AI adoption according to recent industry reports?"
+    label: answerable
+    why: "practicalai 'Breaking down the 2026 Stanford AI Index Report'"
+
+  - q: "How does AI change what computer science students should be taught?"
+    label: answerable
+    why: "oxideandfriends 'AI in Computer Science Education'"
+
+  - q: "What makes streaming data systems hard to work with in practice?"
+    label: answerable
+    why: "dataengineeringpodcast 'Holding Kafka Right: Product-Friendly Streaming with TypeStream'"
+
+  - q: "How do you build AI agents that are durable and keep working over time?"
+    label: answerable
+    why: "practicalai 'Building Durable AI Agents', 'Hermes Agent: Agents that grow with you'"
+
+  - q: "What does it take to build trustworthy AI analysts for business users?"
+    label: answerable
+    why: "dataengineeringpodcast 'Orion at Gravity: Trustworthy AI Analysts for the Enterprise'"
+
+  - q: "Why might narrowing your focus and saying no help a business grow?"
+    label: answerable
+    why: "screaminginthecloud 'The Power of Saying No: Growing by Narrowing Your Focus'"
+
+  - q: "How is hardware and mechanical engineering done for server racks?"
+    label: answerable
+    why: "oxideandfriends 'Mechanical Engineering at Oxide', 'Building a Quorum of Trust in the Oxide Rack'"
+
+  - q: "What advice do founders give about building a company and dealing with failure?"
+    label: answerable
+    why: "thediaryofaceowithstevenbartlett — 2,449 chunks of founder/CEO interviews"
+
+  # --- near_miss -------------------------------------------------------------
+  # Same domain and register as the corpus, plausibly askable, but not covered.
+  # These are the ones a fixed floor gets wrong.
+  - q: "What were the specific findings of the 2019 Stanford AI Index Report?"
+    label: near_miss
+    why: "corpus covers the 2026 report only; wrong year is a realistic user error"
+
+  - q: "How do I configure Apache Airflow's KubernetesExecutor for dynamic task mapping?"
+    label: near_miss
+    why: "data-engineering domain, but no Airflow-configuration content in these 99 episodes"
+
+  - q: "What is the recommended way to write a Terraform provider in Go?"
+    label: near_miss
+    why: "cloud/infra register; no Terraform-authoring content"
+
+  - q: "How does the Rust borrow checker handle higher-ranked trait bounds?"
+    label: near_miss
+    why: "Rust is discussed at Oxide, but not this specific language-lawyer topic"
+
+  - q: "What did the guest say about the collapse of Silicon Valley Bank?"
+    label: near_miss
+    why: "plausible business-podcast topic; not in corpus. 'What did the guest say' phrasing invites fabrication"
+
+  - q: "How do I tune PostgreSQL autovacuum for a high-write workload?"
+    label: near_miss
+    why: "adjacent technical domain; no Postgres-tuning content"
+
+  - q: "What are the tradeoffs between gRPC and GraphQL for internal APIs?"
+    label: near_miss
+    why: "sounds exactly like a dev-podcast topic; not covered"
+
+  - q: "How did the Mirai botnet takedown actually unfold?"
+    label: near_miss
+    why: "Darknet Diaries covers many incidents, but not this one in the 7 episodes indexed"
+
+  - q: "What is the CAP theorem and how does it constrain distributed database design?"
+    label: near_miss
+    why: "canonical topic in this register; not actually discussed in these episodes"
+
+  - q: "What does the podcast say about training a diffusion model from scratch on a single GPU?"
+    label: near_miss
+    why: "image-generation episode exists (Black Forest Labs) but not this how-to; tests topical-neighbour drift"
+
+  - q: "How should a Series B company structure its sales compensation plan?"
+    label: near_miss
+    why: "business register matching DOAC; specific operational topic not covered"
+
+  - q: "What are the main differences between Kubernetes operators and controllers?"
+    label: near_miss
+    why: "Kubernetes appears in titles, but as context, not as a K8s-internals explainer"
+
+  # --- off_topic -------------------------------------------------------------
+  - q: "What is the optimal torque spec for a 1997 Honda Civic transmission?"
+    label: off_topic
+    why: "the original F-1 probe; keep for continuity with the 0.105/0.188/0.227 series"
+
+  - q: "How long should I braise a lamb shoulder and at what temperature?"
+    label: off_topic
+
+  - q: "What are the rules for castling in chess?"
+    label: off_topic
+
+  - q: "Who won the 1998 FIFA World Cup final and what was the score?"
+    label: off_topic
+
+  - q: "What is the recommended dosage of amoxicillin for a child with an ear infection?"
+    label: off_topic
+
+  - q: "How do I get red wine out of a wool carpet?"
+    label: off_topic
+
+  - q: "What is the difference between a sonnet and a villanelle?"
+    label: off_topic
+
+  - q: "When is the best time of year to prune apple trees?"
+    label: off_topic

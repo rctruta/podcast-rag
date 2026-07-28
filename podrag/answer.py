@@ -26,10 +26,25 @@ from dataclasses import dataclass, field
 from podrag.index import _encoder
 from podrag.search import Hit, search
 
-# Cosine similarity on normalised MiniLM embeddings. 0.25 is a starting point
-# chosen by inspection, NOT a tuned value — it should be set from a labelled
-# set of answerable/unanswerable questions before any claim is made about it.
-DEFAULT_MIN_CONFIDENCE = float(os.environ.get("PODRAG_MIN_CONFIDENCE", "0.25"))
+# Cosine similarity on normalised MiniLM embeddings.
+#
+# Was 0.25, chosen by inspection. Calibrated 2026-07-28 against
+# eval/questions.yaml (42 labelled questions, 99-episode corpus) — see F-1 in
+# docs/findings.md. The old value was not merely drifting toward failure; it
+# had already failed: it opened the gate on 17 of 20 questions the corpus
+# cannot answer, including "how long should I braise a lamb shoulder" (0.265)
+# and "rules for castling in chess" (0.267). Precision 0.56.
+#
+# 0.54 is the F0.5-optimal threshold on that set (precision-weighted, because
+# fabricating an answer costs more than refusing a good question). It beat a
+# cross-encoder reranker and a cosine-AND-reranker rule under 6-fold
+# cross-validation, both of which scored higher in-sample and generalised worse.
+#
+# This value is CORPUS-SPECIFIC and expires. Re-run `python eval/calibrate.py`
+# after any material change to the corpus or the embedding model; the value
+# here is checked against eval/calibration.json by tests/test_calibration.py,
+# so the two cannot silently diverge.
+DEFAULT_MIN_CONFIDENCE = float(os.environ.get("PODRAG_MIN_CONFIDENCE", "0.54"))
 
 SYSTEM = """You answer questions using ONLY the podcast excerpts provided.
 

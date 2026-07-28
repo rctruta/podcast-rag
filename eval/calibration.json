@@ -1,0 +1,20 @@
+{
+  "generated_by": "eval/combine.py",
+  "beta": 0.5,
+  "signal": "top cosine, query vs chunk (bi-encoder, all-MiniLM-L6-v2)",
+  "threshold": 0.541,
+  "corpus_chunks": 7377,
+  "questions": 42,
+  "in_sample": {
+    "f_beta": 0.877,
+    "precision": 0.87,
+    "recall": 0.909
+  },
+  "cross_validated_f_beta": 0.83,
+  "rejected_alternatives": {
+    "cross_encoder": 0.756,
+    "cos_and_cross_encoder": 0.764
+  },
+  "previous_threshold": 0.25,
+  "previous_precision_on_this_set": 0.564
+}

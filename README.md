@@ -247,3 +247,4 @@ cluster and an API key; this runs from a local directory.
 
 Transcripts are fetched at index time on the user's machine and are never
 redistributed. Point it at a corpus you have the rights to use.
+

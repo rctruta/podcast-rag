@@ -81,7 +81,7 @@ Note the third measurement is on an entirely different corpus (technical and
 interview shows, not wellness), so this is not an artifact of topical drift
 toward the query — it is the corpus-size effect the mechanism predicts.
 
-**This is no longer theoretical.** A fixed floor is now the most likely next
+**Superseded — see RESOLVED below.** A fixed floor is now the most likely next
 defect in this system.
 
 ### Why this happens
@@ -123,15 +123,119 @@ refusal at all and so never encounter it.
    report its own uncertainty, which is the thing this design is trying to
    avoid.
 
-**Position for this project:** (1) plus (3). Relative signals for the mechanism
-because they are scale-free and add no dependency; a labelled calibration set
-because a threshold without one is an opinion. (2) is the obvious upgrade if
-retrieval quality itself becomes the bottleneck. (4) is deliberately last —
-the point of the refusal gate is to be mechanical, and re-introducing an LLM
-judgement into it reintroduces exactly the failure mode being defended against.
+### RESOLVED 2026-07-28 — and the original framing was too kind
 
-**Status: unimplemented.** The floor is still fixed at 0.25 and still by
-inspection. Recorded so the limitation is known rather than discovered.
+**The floor had not "drifted toward" failure. It had already failed.**
+
+Measured against a new labelled set of 42 questions (`eval/questions.yaml`) on
+the 99-episode corpus, the shipped `0.25` floor scored:
+
+| | |
+|---|---|
+| true positives (answered, answerable) | 22 |
+| **false positives (answered, unanswerable)** | **17** |
+| false negatives (refused, answerable) | 0 |
+| true negatives (refused, unanswerable) | 3 |
+| **precision** | **0.56** |
+| recall | 1.00 |
+
+It refused 3 of 20 unanswerable questions. It opened on *"how long should I
+braise a lamb shoulder"* (0.265) and *"what are the rules for castling in
+chess"* (0.267) — both above the floor. The recall of 1.00 is not a strength;
+a gate that never refuses trivially achieves it.
+
+The torque-spec probe was the only off-topic question the floor still caught,
+which is why the F-1 series looked like a slow slide rather than a system
+already through the floor. **One probe is not an evaluation set.** The
+single-probe series was measuring one point on a distribution and reading it as
+the distribution.
+
+### The labelled set, and why beta < 1
+
+`eval/questions.yaml`: 22 answerable, 12 **near-miss** (same domain, plausibly
+phrased, not covered), 8 off-topic. Questions are written from episode titles,
+never from chunk text — deriving a question from the passage that answers it
+inflates similarity and flatters the gate.
+
+The near-miss bucket is the one that matters. Off-topic questions are easy for
+any threshold.
+
+On the scoring metric: with the positive class defined as *"the gate opens"*,
+a false positive is a fabricated answer and a false negative is a refused good
+question. Those costs are not symmetric. F-beta weights **recall** by beta, so
+a refusal gate wants **beta < 1** — F0.5, precision-weighted. beta > 1 would
+optimise for the cheap error.
+
+### What was measured, including what failed
+
+Every candidate was swept over all thresholds, then re-scored under 6-fold
+cross-validation x 40 shuffles, because a threshold fitted and evaluated on the
+same 42 questions reports an optimistic bound rather than an estimate.
+
+| strategy | in-sample F0.5 | **cross-validated F0.5** | gap |
+|---|---|---|---|
+| current, cosine >= 0.25 | 0.618 | 0.618 | — |
+| **cosine, threshold fitted** | 0.877 | **0.830** | 0.047 |
+| cross-encoder rerank | 0.882 | 0.756 | 0.127 |
+| cosine AND cross-encoder | 0.904 | 0.764 | 0.140 |
+
+**Two hypotheses died here, and both were mine or this document's.**
+
+*Scale-free relative signals failed.* This document's stated position was
+option (1) — top-vs-median gaps, distribution shape — on the reasoning that
+they are corpus-size-robust. Measured, they are *worse* than raw cosine
+(F0.5 0.579-0.611 vs 0.877). The score distribution of a genuinely relevant
+query is not reliably peakier in a 9-show corpus where many chunks are
+plausibly on-topic.
+
+*An extreme-value correction failed.* The drift is an order-statistic effect —
+the maximum of N samples rises with N by itself — so normalising the top score
+by the corpus's own spread and subtracting the expected maximum of N draws
+should cancel it. It did not: the corrected statistic rose too (0.61 / 0.50 /
+1.12 across N = 514 / 964 / 7,377) and ranked no better than raw cosine.
+
+*The cross-encoder did what it was predicted to do, and still lost.* It fixed
+exactly the cases predicted: a question about the Rust borrow checker scored
+cosine 0.636 (second-highest of all should-refuse questions) but cross-encoder
+-4.99; gRPC-vs-GraphQL, 0.656 -> -5.16. A bi-encoder embeds question and
+passage independently, so nothing in the comparison can represent *"right
+subject, wrong thing asked"*. A cross-encoder reads both together and can.
+But it introduced new errors: it scored genuinely answerable conversational
+questions low (mechanical engineering -4.22, FinOps -1.40), because
+`ms-marco` rerankers are trained on short factoid web passages and podcast
+transcript chunks are rambling and discursive. Net, under cross-validation, it
+**generalises worse than plain cosine**. The largest in-sample score and the
+largest generalisation gap were the same two rows.
+
+### Shipped
+
+`DEFAULT_MIN_CONFIDENCE` **0.25 -> 0.54**. Precision 0.56 -> 0.87 on the
+labelled set. Recall 1.00 -> 0.91: two answerable questions are now refused,
+which is the intended direction of the trade.
+
+Provenance is an emitted artifact (`eval/calibration.json`, written by
+`eval/combine.py`), and `tests/test_calibration.py` asserts the shipped
+constant matches it — so a re-calibration that is never applied, or a
+hand-edited threshold, fails the suite rather than diverging silently.
+
+### What this does not fix
+
+**No threshold on this signal separates the set.** The worst answerable
+question (0.452) scores below the best should-refuse question (0.692) — a query
+about the *2019* Stanford AI Index against a corpus containing the *2026*
+report. Same subject, wrong year, and a bi-encoder has no way to represent the
+difference. 0.54 is the best available operating point on an overlapping
+distribution, not a separating one. The residual errors are structural, not
+tuning.
+
+**The threshold is corpus-specific and expires.** It was calibrated at 7,377
+chunks. Re-run `python eval/combine.py` after any material change to the corpus
+or the embedding model.
+
+**42 questions is a small set**, hand-labelled by one person, and the
+near-miss bucket encodes a judgement about what these 99 episodes do not
+cover. The cross-validated numbers are honest about threshold-fitting; they
+cannot correct for a mislabelled question.
 
 ---
 
