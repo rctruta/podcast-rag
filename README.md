@@ -187,7 +187,7 @@ means a visitor can supply their own — or use Ollama and pay nothing.
 ## Findings
 
 Observations with architectural consequences, each marked MEASURED or ASSUMED:
-**[docs/findings.md](docs/findings.md)**
+**[docs/findings.md](docs/findings.md)** · legitimate sources: **[docs/sources.md](docs/sources.md)**
 
 - **F-1** — a fixed similarity threshold does not survive corpus growth. The
   same off-topic query scored 0.105 against 5 episodes and 0.188 against 7.
