@@ -27,3 +27,36 @@ def test_channel_name_becomes_a_stable_filter_key():
     assert slug("a wellness podcast") == "redacted-show"
     assert slug("TED Audio Collective!") == "tedaudiocollective"
     assert slug("") == "unknown"
+
+
+# --- metadata: API path vs keyless fallback (no network) ------------------
+
+from podrag.youtube import VideoMeta, _iso8601_to_seconds
+
+
+@pytest.mark.parametrize("iso,secs", [
+    ("PT1H3M21S", 3801),
+    ("PT45M32S", 2732),
+    ("PT30S", 30),
+    ("PT2H", 7200),
+    ("", 0),
+    ("garbage", 0),
+])
+def test_iso8601_durations_parse(iso, secs):
+    assert _iso8601_to_seconds(iso) == secs
+
+
+def test_topic_text_combines_the_fields_a_filter_needs():
+    m = VideoMeta(video_id="v", title="Menopause 101", channel="c",
+                  description="hormones and sleep", tags=("health", "women"),
+                  source="api")
+    t = m.topic_text
+    assert "Menopause" in t and "health" in t and "hormones" in t
+
+
+def test_oembed_metadata_is_thin_and_says_so():
+    """The keyless path yields title only — the reason the API path exists.
+    Asserted so nobody later assumes topic filtering works without a key."""
+    m = VideoMeta(video_id="v", title="T", channel="c", source="oembed")
+    assert m.topic_text == "T"
+    assert m.tags == () and m.description == "" and m.duration_s == 0
