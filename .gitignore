@@ -3,3 +3,6 @@ __pycache__/
 *.lance/
 .env
 transcripts/
+
+# Working notes stay local; anything published moves to docs/
+scratch/

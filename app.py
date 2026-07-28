@@ -72,7 +72,7 @@ with st.sidebar:
     k = st.slider("passages", 3, 12, 6)
     floor = st.slider("confidence floor", 0.0, 0.6, DEFAULT_MIN_CONFIDENCE, 0.01,
                       help="Below this the system refuses. Drifts with corpus "
-                           "size — see scratch/findings.md F-1.")
+                           "size — see docs/findings.md F-1.")
     from podrag.providers import available
     models = available()
     has_key = bool(models)
